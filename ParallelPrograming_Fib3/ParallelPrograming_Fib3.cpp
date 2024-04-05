@@ -421,17 +421,17 @@ template <typename TFunc> void RunAndMeasure(const char* title, TFunc func)
 
 template <typename TFunc> void RunAndMeasure(const char* title, TFunc func, int execTimes)
 {
-	chrono::duration<double, milli> avgTime;
+	double avgTime = 0;
 	for (size_t i = 0; i < execTimes; i++)
 	{
 		const auto start = std::chrono::steady_clock::now();
 		auto ret = func();
 		const auto end = std::chrono::steady_clock::now();
-		avgTime += (end - start);
+		avgTime += std::chrono::duration <double, std::milli>(end - start).count();
 		cout << title << ", att " << i + 1 << ": " << std::chrono::duration <double, std::milli>(end - start).count() << " ms, res " << ret << "\n";
 	}
 	
-	cout << "average time: " << avgTime.count() / execTimes << endl;
+	cout << "average time: " << avgTime / execTimes << " ms" << endl;
 }
 
 // 10e5 - 10e6
@@ -537,6 +537,7 @@ void RunSingleTestReduce() {
 }
 void RunFindReduceTests() {
 	srand(time(0));
+	const unsigned long int n0 = 1e5;
 	const unsigned long int n1 = 5 * 1e8;
 	const unsigned long int n2 = 1e9;
 	const unsigned long int n3 = 2 * 1e9;
@@ -544,11 +545,11 @@ void RunFindReduceTests() {
 	const unsigned long int rightBorder = 10e6;
 	vector<int> vec1 = createVectorRandom(n1, leftBorder, rightBorder);
 
+	RunAndMeasure("vectorSum 5 * 10e8 PAR", [&vec1] {
+		return vectorSum(vec1, execution::par);
+		}, 3);
 	RunAndMeasure("vectorSum 5 * 10e8 SEQ", [&vec1] {
 		return vectorSum(vec1, execution::seq);
-		}, 3);
-	RunAndMeasure("vectorSum 5 * 10e8 PAR", [&vec1] {
-		return vectorSum(vec1, execution::par);	
 		}, 3);
 	RunAndMeasure("vectorSum 5 * 10e8 PAR_UNSEQ", [&vec1] {
 		return vectorSum(vec1, execution::par_unseq);
@@ -581,7 +582,23 @@ void RunFindReduceTests() {
 
 }
 
+vector<vector<int>> CreateRandomMatrix(int n, unsigned long int leftBorder, unsigned long int rightBorder) {
+	vector<vector<int>> M;
+	for (size_t i = 0; i < n; i++)
+		M.push_back(createVectorRandom(n, leftBorder, rightBorder));
+	return M;
+}
+void RunMatricesMultiplicationTest() {
+	const unsigned long int leftBorder = 10e5;
+	const unsigned long int rightBorder = 10e6;
+	
+	int n = 4;
+	
+	vector<vector<int>> M1 = CreateRandomMatrix(n, leftBorder, rightBorder);
+	vector<vector<int>> M2 = CreateRandomMatrix(n, leftBorder, rightBorder);
+}
+
 int main() {
-	RunFindReduceTests();
+	
 	return 0;
 }
