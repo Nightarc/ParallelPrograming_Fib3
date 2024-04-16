@@ -448,6 +448,8 @@ vector<int> createVectorRandom(int n, int leftBorder, int rightBorder) {
 	return res;
 }
 
+
+
 int findFactors(int n) {
 	int c = 0; // 1 and n are always factors, we won't be accounting for them
 	if (n % (int)sqrt(n) == 0) c++;
@@ -582,10 +584,23 @@ void RunFindReduceTests() {
 
 }
 
-vector<vector<int>> CreateRandomMatrix(int n, unsigned long int leftBorder, unsigned long int rightBorder) {
-	vector<vector<int>> M;
+int* createArrayRandom(int n, int leftBorder, int rightBorder) {
+	std::random_device rd; // obtain a random number from hardware
+	std::mt19937 gen(rd()); // seed the generator
+	std::uniform_int_distribution<> distr(leftBorder, rightBorder); // define the range
+
+	int* arr = new int[n];
 	for (size_t i = 0; i < n; i++)
-		M.push_back(createVectorRandom(n, leftBorder, rightBorder));
+		arr[i] = distr(gen);
+
+	return arr;
+}
+
+int** CreateRandomMatrix(int n, unsigned long int leftBorder, unsigned long int rightBorder) {
+	int** M = new int* [n];
+		for (size_t i = 0; i < n; i++)
+			M[i] = createArrayRandom(n, leftBorder, rightBorder);
+
 	return M;
 }
 void RunMatricesMultiplicationTest() {
@@ -594,11 +609,11 @@ void RunMatricesMultiplicationTest() {
 	
 	int n = 4;
 	
-	vector<vector<int>> M1 = CreateRandomMatrix(n, leftBorder, rightBorder);
-	vector<vector<int>> M2 = CreateRandomMatrix(n, leftBorder, rightBorder);
+	int** M1 = CreateRandomMatrix(n, leftBorder, rightBorder);
+	int** M2 = CreateRandomMatrix(n, leftBorder, rightBorder);
 }
 
 int main() {
-	
+	RunMatricesMultiplicationTest();
 	return 0;
 }
