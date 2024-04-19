@@ -35,6 +35,22 @@ template <typename TFunc> void RunAndMeasure(const char* title, TFunc func, int 
 	cout << "average time: " << avgTime / execTimes << " ms" << endl;
 }
 
+template <typename TFunc> void RunAndMeasure(const char* title, TFunc func, int execTimes, bool showResult)
+{
+	double avgTime = 0;
+	for (size_t i = 0; i < execTimes; i++)
+	{
+		const auto start = std::chrono::steady_clock::now();
+		auto ret = func();
+		const auto end = std::chrono::steady_clock::now();
+		avgTime += std::chrono::duration <double, std::milli>(end - start).count();
+		cout << title << ", att " << i + 1 << ": " << std::chrono::duration <double, std::milli>(end - start).count() << " ms";
+		cout << endl;
+	}
+
+	cout << "average time: " << avgTime / execTimes << " ms" << endl;
+}
+
 // 10e5 - 10e6
 // (RAND() % 10e6) + 10e5 
 vector<int> createVectorRandom(int n, int leftBorder, int rightBorder) {
@@ -73,7 +89,7 @@ template <typename Policy>
 int printNumberOfFactors(vector<int> vec, Policy policy) {
 	//Применяем функцию нахождения количества делителей к каждому элементу вектора
 	transform(policy, vec.begin(), vec.end(), vec.begin(), findFactors);
-	return 0;
+	return vec[0];
 }
 
 
@@ -103,51 +119,51 @@ void RunFindFactorTests() {
 	//onelaunch(vec);
 	RunAndMeasure("printNumberOfFactors 5 * 10e5 seq", [&vec1] {
 		return printNumberOfFactors(vec1, execution::seq);
-		});
+		}, 3);
 
 	RunAndMeasure("printNumberOfFactors 5 * 10e5 par", [&vec1] {
 		return printNumberOfFactors(vec1, execution::par);
-		});
+		}, 3);
 
 	RunAndMeasure("printNumberOfFactors 5 * 10e5 par_unseq", [&vec1] {
 		return printNumberOfFactors(vec1, execution::par_unseq);
-		});
+		}, 3);
 
 	vector<int> vec2 = createVectorRandom(n2, leftBorder, rightBorder);
 	RunAndMeasure("printNumberOfFactors 10e6 seq", [&vec2] {
 		return printNumberOfFactors(vec2, execution::seq);
-		});
+		}, 3);
 
 	RunAndMeasure("printNumberOfFactors 10e6 par", [&vec2] {
 		return printNumberOfFactors(vec2, execution::par);
-		});
+		}, 3);
 
 	RunAndMeasure("printNumberOfFactors 10e6 par_unseq", [&vec2] {
 		return printNumberOfFactors(vec2, execution::par_unseq);
-		});
+		}, 3);
 
 
 	vector<int> vec3 = createVectorRandom(n3, leftBorder, rightBorder);
 	RunAndMeasure("printNumberOfFactors 2* 10e6 seq", [&vec3] {
 		return printNumberOfFactors(vec3, execution::seq);
-		});
+		}, 3);
 
 	RunAndMeasure("printNumberOfFactors 2* 10e6 par", [&vec3] {
 		return printNumberOfFactors(vec3, execution::par);
-		});
+		}, 3);
 
 	RunAndMeasure("printNumberOfFactors 2* 10e6 par_unseq", [&vec3] {
 		return printNumberOfFactors(vec3, execution::par_unseq);
-		});
+		}, 3);
 }
 
 void RunSingleTestReduce() {
-	int n1 = 2;
+	int n1 = 5;
 	const int leftBorder = 1e5; //100.000
 	const int rightBorder = 1e6; //1.000.000
 	vector<int> vec1 = createVectorRandom(n1, leftBorder, rightBorder);
 	if (n1 < 500)printVector(vec1);
-	cout << vectorSum(vec1, execution::seq) << endl;
+	cout << vectorSum(vec1, execution::par) << endl;
 }
 void RunFindReduceTests() {
 	srand(time(0));
@@ -157,6 +173,7 @@ void RunFindReduceTests() {
 	const __int64 n3 = 2 * 1e9;
 	const unsigned long int leftBorder = 10e5;
 	const unsigned long int rightBorder = 10e6;
+
 	vector<int> vec1 = createVectorRandom(n1, leftBorder, rightBorder);
 
 	RunAndMeasure("vectorSum 5 * 10e8 PAR", [&vec1] {
@@ -182,7 +199,7 @@ void RunFindReduceTests() {
 		}, 3);
 	vec2.clear();
 
-	vector<int> vec3 = createVectorRandom(n1, leftBorder, rightBorder);
+	vector<int> vec3 = createVectorRandom(n3, leftBorder, rightBorder);
 	RunAndMeasure("vectorSum 2 * 10e9 SEQ", [&vec3] {
 		return vectorSum(vec3, execution::seq);
 		}, 3);
@@ -234,22 +251,21 @@ void Transpose(vector<vector<int>> &M) {
 	
 }
 template <typename Policy>
-vector<vector<int>> MultiplyMatrices(Policy policy, vector<vector<int>> &M1, vector<vector<int>> &M2) {
-	vector<vector<int>> R = CreateMatrix(M1.size());
-	Transpose(M2);
+int MultiplyMatrices(Policy policy, vector<vector<int>> &M1, vector<vector<int>> &M2, vector<vector<int>> &R) {
+	//Transpose(M2);
 
 	for (size_t i = 0; i < M1.size(); i++)
 		for (size_t j = 0; j < M1.size(); j++)
 			R[i][j] = transform_reduce(policy, M1[i].begin(), M1[i].end(), M2[j].begin(), 0);
 
-	return R;
+	return 0;
 }
 
-void RunMatricesMultiplicationTest() {
+void RunMatricesMultiplicationSingleTest() {
 	const unsigned long int leftBorder = 1;
-	const unsigned long int rightBorder = 10;
+	const unsigned long int rightBorder = 5;
 
-	int n = 4;
+	int n = 3;
 
 	vector<vector<int>> M1 = CreateRandomMatrix(n, leftBorder, rightBorder);
 	for (size_t i = 0; i < n; i++)
@@ -267,7 +283,8 @@ void RunMatricesMultiplicationTest() {
 		cout << endl;
 	}
 	cout << endl;
-	vector<vector<int>> R = MultiplyMatrices(execution::par, M1, M2);
+	vector<vector<int>> R = CreateMatrix(M1.size());
+	MultiplyMatrices(execution::par, M1, M2, R);
 
 	for (size_t i = 0; i < n; i++)
 	{
@@ -277,17 +294,137 @@ void RunMatricesMultiplicationTest() {
 	}
 }
 
+void RunMatricesMultiplicationTest() {
+	const unsigned long int leftBorder = 1;
+	const unsigned long int rightBorder = 1;
+
+	int n1 = 512;
+	int n2 = 1024;
+	int n3 = 2048;
+
+	vector<vector<int>> M1 = CreateRandomMatrix(n1, leftBorder, rightBorder);
+	vector<vector<int>> M2 = CreateRandomMatrix(n1, leftBorder, rightBorder);
+	vector<vector<int>> R = CreateMatrix(M1.size());
+	RunAndMeasure("MatrixMult 512x512 PAR", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::par, M1, M2, R);
+		}, 3, false);
+	RunAndMeasure("MatrixMult 512x512 PAR_UNSEQ", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::par_unseq, M1, M2, R);
+		}, 3, false);
+	RunAndMeasure("MatrixMult 512x512 SEQ", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::seq, M1, M2, R);
+		}, 3, false);
+	M1.clear(); M2.clear();
+
+
+	M1 = CreateRandomMatrix(n2, leftBorder, rightBorder);
+	M2 = CreateRandomMatrix(n2, leftBorder, rightBorder);
+	R = CreateMatrix(M1.size());
+	RunAndMeasure("MatrixMult 1024x1024 SEQ", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::seq, M1, M2, R);
+		}, 3, false);
+	RunAndMeasure("MatrixMult 1024x1024 PAR", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::par, M1, M2, R);
+		}, 3, false);
+	RunAndMeasure("MatrixMult 1024x1024 PAR_UNSEQ", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::par_unseq, M1, M2, R);
+		}, 3, false);
+	M1.clear(); M2.clear();
+
+
+	M1 = CreateRandomMatrix(n3, leftBorder, rightBorder);
+	M2 = CreateRandomMatrix(n3, leftBorder, rightBorder);
+	R = CreateMatrix(M1.size());
+	RunAndMeasure("MatrixMult 2048x2048 SEQ", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::seq, M1, M2, R);
+		}, 3, false);
+	RunAndMeasure("MatrixMult 2048x2048 PAR", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::par, M1, M2, R);
+		}, 3, false);
+	RunAndMeasure("MatrixMult 2048x2048 PAR_UNSEQ", [&M1, &M2, &R] {
+		return MultiplyMatrices(execution::par_unseq, M1, M2, R);
+		}, 3, false);
+	M1.clear(); M2.clear();
+}
 
 template <typename Policy>
-void RunSortingTest(Policy policy) {
+void RunSortingSingleTest(Policy policy) {
 	vector<double> arr = createVectorRandomDouble(10, 1, 20);
 	printVector(arr);
 	sort(policy, arr.begin(), arr.end());
 	cout << "sorted: " << endl;
 	printVector(arr);
 }
+template <typename Policy>
+int sortDouble(Policy policy, vector<double> arr) {
+	sort(policy, arr.begin(), arr.end());
+	return 0;
+}
+void RunSortingTest() {
+	const int n1 = 1e5;
+	const int n2 = 1e6;
+	const int n3 = 5 * 1e6;
+	const int n4 = 1e8;
 
+	const int leftBorder = 1;
+	const int rightBorder = 1000;
+
+	vector<double> arr = createVectorRandomDouble(n1, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e5 SEQ", [&arr] {
+		return sortDouble(execution::seq, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n1, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e5 PAR", [&arr] {
+		return sortDouble(execution::par, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n1, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e5 PAR_UNSEQ", [&arr] {
+		return sortDouble(execution::par_unseq, arr);
+		}, 3);
+
+
+	arr = createVectorRandomDouble(n2, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e6 SEQ", [&arr] {
+		return sortDouble(execution::seq, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n2, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e6 PAR", [&arr] {
+		return sortDouble(execution::par, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n2, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e6 PAR_UNSEQ", [&arr] {
+		return sortDouble(execution::par_unseq, arr);
+		}, 3);
+
+
+	arr = createVectorRandomDouble(n3, leftBorder, rightBorder);
+	RunAndMeasure("Sort 5*10e6 SEQ", [&arr] {
+		return sortDouble(execution::seq, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n3, leftBorder, rightBorder);
+	RunAndMeasure("Sort 5*10e6 PAR", [&arr] {
+		return sortDouble(execution::par, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n3, leftBorder, rightBorder);
+	RunAndMeasure("Sort 5*10e6 PAR_UNSEQ", [&arr] {
+		return sortDouble(execution::par_unseq, arr);
+		}, 3);
+
+
+	arr = createVectorRandomDouble(n4, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e8 SEQ", [&arr] {
+		return sortDouble(execution::seq, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n4, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e8 PAR", [&arr] {
+		return sortDouble(execution::par, arr);
+		}, 3);
+	arr = createVectorRandomDouble(n4, leftBorder, rightBorder);
+	RunAndMeasure("Sort 10e8 PAR_UNSEQ", [&arr] {
+		return sortDouble(execution::par_unseq, arr);
+		}, 3);
+}
 int main() {
-	RunSortingTest(execution::par);
+	RunSortingSingleTest(execution::par);
 	return 0;
 }
