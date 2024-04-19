@@ -49,6 +49,18 @@ vector<int> createVectorRandom(int n, int leftBorder, int rightBorder) {
 	return res;
 }
 
+vector<double> createVectorRandomDouble(int n, double leftBorder, double rightBorder) {
+	std::random_device rd; // obtain a random number from hardware
+	std::mt19937 gen(rd()); // seed the generator
+	std::uniform_real_distribution distr(leftBorder, rightBorder); // define the range
+
+	vector<double> res;
+	for (size_t i = 0; i < n; i++)
+		res.push_back(distr(gen));
+
+	return res;
+}
+
 int findFactors(int n) {
 	int c = 0; // 1 and n are always factors, we won't be accounting for them
 	if (n % (int)sqrt(n) == 0) c++;
@@ -72,7 +84,8 @@ __int64 vectorSum(vector<int> vec, Policy policy) {
 	return reduce(policy, vec.begin(), vec.end(), (__int64)0);
 }
 
-void printVector(vector<int> vec) {
+template <typename T>
+void printVector(vector<T> vec) {
 	for (size_t i = 0; i < vec.size(); i++)
 		cout << vec[i] << ' ';
 	cout << endl;
@@ -264,7 +277,17 @@ void RunMatricesMultiplicationTest() {
 	}
 }
 
+
+template <typename Policy>
+void RunSortingTest(Policy policy) {
+	vector<double> arr = createVectorRandomDouble(10, 1, 20);
+	printVector(arr);
+	sort(policy, arr.begin(), arr.end());
+	cout << "sorted: " << endl;
+	printVector(arr);
+}
+
 int main() {
-	RunMatricesMultiplicationTest();
+	RunSortingTest(execution::par);
 	return 0;
 }
