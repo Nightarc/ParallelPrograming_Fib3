@@ -581,6 +581,18 @@ void RunFindReduceTests() {
 	vec3.clear();
 
 }
+vector<vector<int>> CreateMatrix(int n) {
+	vector<vector<int>> M;
+	for (size_t i = 0; i < n; i++)
+	{
+		vector<int> filVec;
+		for (size_t i = 0; i < n; i++)
+			filVec.push_back(0);
+		M.push_back(filVec);
+	}
+	return M;
+
+}
 
 vector<vector<int>> CreateRandomMatrix(int n, unsigned long int leftBorder, unsigned long int rightBorder) {
 	vector<vector<int>> M;
@@ -588,17 +600,44 @@ vector<vector<int>> CreateRandomMatrix(int n, unsigned long int leftBorder, unsi
 		M.push_back(createVectorRandom(n, leftBorder, rightBorder));
 	return M;
 }
+
+
+int MultiplyStep(const vector<vector<int>> &M1, const vector<vector<int>> &M2, int rowPtr, int colPtr) {
+	int sum = 0;
+	for (size_t i = 0; i < M1.size(); i++)
+		sum += M1[rowPtr][i] * M2[i][colPtr];
+
+	return sum;
+}
+
+template <typename Policy>
+vector<vector<int>> MultiplyMatrices(Policy policy, const vector<vector<int>> &M1, const vector<vector<int>> &M2) {
+	vector<vector<int>> R = CreateMatrix(M1.size());
+
+	for (size_t i = 0; i < M1.size(); i++)
+		for (size_t j = 0; j < M1.size(); j++)
+			transform(policy, R[i].begin(), R[i].end(), MultiplyStep(M1, M2, i, j));
+}
+
 void RunMatricesMultiplicationTest() {
-	const unsigned long int leftBorder = 10e5;
-	const unsigned long int rightBorder = 10e6;
-	
+	const unsigned long int leftBorder = 10;
+	const unsigned long int rightBorder = 20;
+
 	int n = 4;
-	
+
 	vector<vector<int>> M1 = CreateRandomMatrix(n, leftBorder, rightBorder);
 	vector<vector<int>> M2 = CreateRandomMatrix(n, leftBorder, rightBorder);
+	vector<vector<int>> R = MultiplyMatrices(execution::par, M1, M2);
+
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < n; j++)
+			cout << R[i][j] << ' ';
+		cout << endl;
+	}
 }
 
 int main() {
-	
+	RunMatricesMultiplicationTest();
 	return 0;
 }
