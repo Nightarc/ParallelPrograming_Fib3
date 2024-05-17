@@ -18,10 +18,7 @@
     <ClCompile Include="ParallelPrograming_Fib3.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="SquareMatrix_OneD.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="SquareMatrix_TwoD.cpp">
+    <ClCompile Include="TestLibrary.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
@@ -29,10 +26,7 @@
     <ClInclude Include="asd.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="SquareMatrix_OneD.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="SquareMatrix_TwoD.h">
+    <ClInclude Include="TestLibrary.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

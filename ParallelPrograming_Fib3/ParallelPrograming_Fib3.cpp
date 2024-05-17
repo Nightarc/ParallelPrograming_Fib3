@@ -3,86 +3,93 @@
 
 #include <iostream>
 #include <chrono>
-#include "SquareMatrix_OneD.h"
-#include "SquareMatrix_TwoD.h"
+#include <random>
+#include <thread>
+#include <mutex>
+#include <string>
+#include <numeric>
+#include <vector>
 using namespace std;
-
-
-
-
-
-
-double printDeltaTime_OneD(int matrixSize)
+std::random_device rd; // obtain a random number from hardware
+std::mt19937 gen(rd()); // seed the generator
+std::uniform_int_distribution<> distr(1000, 2000); // define the range
+int nextRandom() {
+    return distr(gen);
+}
+void foo()
 {
-    SquareMatrix_OneD M1(matrixSize, matrixSize);
-    SquareMatrix_OneD M2(matrixSize, matrixSize);
-
-    for (size_t i = 0; i < matrixSize; i++)
+    std::cout << "Thread start..." << std::endl;
+    for (int i = 0; i < 100; ++i)
     {
-        for (size_t j = 0; j < matrixSize; j++)
+        std::cout << "Thread id = " << this_thread::get_id()
+            << std::endl;
+    }
+    this_thread::sleep_for(std::chrono::milliseconds(nextRandom()));
+    std::cout << "Thread finish!" << std::endl;
+    return;
+}
+
+void task2(int N) {
+    
+    for (size_t i = 0; i < N; i++)
+    {
+        thread T = thread(foo);
+        T.detach(); 
+    }
+}
+int sharedVar = 0;
+void task3ThreadFunc(int i, std::mutex &mx) {
+    std::lock_guard<std::mutex> ulmx(mx);
+    if(sharedVar < 100) sharedVar += i;
+    cout << to_string(i) + " reporting: sharedVar: " + to_string(sharedVar) << endl;
+    if (sharedVar > 100) {
+        cout << "aborting!" << endl;
+        return;
+    }
+}
+void task3(int P) {
+    std::mutex mx;
+
+    int i = 0;
+    while(sharedVar < 100)
+    {
+        thread T = thread(task3ThreadFunc, (i++), ref(mx));
+        T.detach();
+    }
+}
+bool s[1000000];
+int gpd(int n) {
+    int gpd = 2;
+    for (size_t i = 2; i < n; i++)
+        if (s[i] && n % i == 0) gpd = i;
+
+    return gpd;
+}
+void task4_helper(vector<int> vec) {
+    return transform(vec.begin(), vec.end(), vec.begin(), gpd)
+}
+void task4() {
+    //Filling ertosphenes sieve
+    for (size_t i = 0; i < 1000000; i++)
+        s[i] = true;
+    s[0] = false; s[1] = false;
+    for (size_t i = 2; i < 1000000; i++)
+    {
+        for (size_t j = 0; j < 1000000; j+=i)
         {
-            M1.setCoefficient(i, j, 1);
-            M2.setCoefficient(i, j, 1);
+            s[i] = false;
         }
     }
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    start = std::chrono::high_resolution_clock::now();
-
-    SquareMatrix_OneD result = M1.Multiple(M2);
-
-    end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    cout << "Matrix size = " << matrixSize << endl;
-    cout << "Delta time = " << diff.count() << "s" << endl;
-    return diff.count();
 }
-
-double printDeltaTime_TwoD(int matrixSize)
-{
-    SquareMatrix_TwoD M1(matrixSize, matrixSize);
-    SquareMatrix_TwoD M2(matrixSize, matrixSize);
-
-    for (size_t i = 0; i < matrixSize; i++)
-    {
-        for (size_t j = 0; j < matrixSize; j++)
-        {
-            M1.coefficients[i][j] = 1;
-            M2.coefficients[i][j] = 1;
-        }
-    }
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    start = std::chrono::high_resolution_clock::now();
-
-    M1.Multiple(M2);
-
-    end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    cout << "Matrix size = " << matrixSize << endl;
-    cout << "Delta time = " << diff.count() << "s" << endl;
-    return diff.count();
-}
-void printAverageRuntime(int matrixSize, int count) {
-    double avg = 0;
-    for (size_t i = 0; i < count; i++)
-        avg += printDeltaTime_OneD(matrixSize);
-    cout << "One pointer average time = " << avg / count << endl;
-
-    /*double avg = 0;
-    for (size_t i = 0; i < count; i++)
-        avg += printDeltaTime_TwoD(matrixSize);
-    cout << "Two pointers average time = " << avg / count << endl;*/
-}
-
-
 int main()
 {
-    printAverageRuntime(512, 3);
-    printAverageRuntime(1024, 3);
-    printAverageRuntime(2048, 3);
-
-
+    int N;
+    sharedVar = 0;
+    
+    task3(N);
+    string test;
+    cin >> test;
+    return 0;
 }
 
 /*
