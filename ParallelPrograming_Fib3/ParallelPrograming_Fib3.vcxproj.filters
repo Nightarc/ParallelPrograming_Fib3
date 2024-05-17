@@ -18,15 +18,9 @@
     <ClCompile Include="ParallelPrograming_Fib3.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="TestLibrary.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asd.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="TestLibrary.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
