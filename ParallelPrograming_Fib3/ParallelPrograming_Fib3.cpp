@@ -219,7 +219,7 @@ vector<double> parallelMatrixVectorMultiplication(const std::vector<std::vector<
     int N = matrix.size();
     std::vector<double> result(N, 0.0);
 
-    for (int numThreads : {1, 2, 4, 8}) {
+    for (int numThreads : {2, 4, 8}) {
         auto start = std::chrono::steady_clock::now();
         std::vector<std::thread> threads(numThreads);
         int chunkSize = N / numThreads;
@@ -234,12 +234,12 @@ vector<double> parallelMatrixVectorMultiplication(const std::vector<std::vector<
                 }
                 });
         }
-        for (auto& thread : threads) {
+        for (auto& thread : threads) 
             thread.join();
-        }
+        
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<double> parallelDuration = end - start;
-        std::cout << "Параллельное время с " << numThreads << " ядрами: " << parallelDuration.count() << " секунд" << std::endl;
+        std::cout << "Parallel time " << numThreads << " threads: " << parallelDuration.count() << " s" << std::endl;
     }
 
     return result;
@@ -299,7 +299,7 @@ void task6(int p, int N) {
     }
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> parallelDuration = end - start;
-    std::cout << "time " << p << " threads: " << parallelDuration.count() << " s" << std::endl;
+    std::cout << N << ": time with " << p << " threads: " << parallelDuration.count() << " s" << std::endl;
 }
 int main()
 {
@@ -307,6 +307,7 @@ int main()
     int N;
     int p[] = { 1, 2, 4, 8 };
     int ns[] = { 2 * 1e7, 5 * 1e7, 1e8 };
+    int ns_small[] = { 2 * 1e6, 5 * 1e6, 1e7 };
     cout << "Input task number: "; 
     cin >> state;
     switch (state) {
@@ -331,7 +332,7 @@ int main()
                     for (size_t k = 0; k < 3; k++)
                     {
                         auto start = std::chrono::steady_clock::now();
-                        task4(p[j], ns[i]);
+                        task4(p[j], ns_small[i]);
                         auto end = std::chrono::steady_clock::now();
                         time += std::chrono::duration_cast<chrono::milliseconds>(end - start).count();
                     }
@@ -341,9 +342,18 @@ int main()
             break;
         }
         case 5:
-            break;
+        {
+            task5();
+        }
         case 6:
+        {
+            for (int N : {1e7, 1e8, 1e9})
+                for (int numThreads : {1, 2, 4, 8})
+                    for (int i : {1, 2, 3})
+                        task6(numThreads, N);
+
             break;
+        }
     }
     
     return 0;
