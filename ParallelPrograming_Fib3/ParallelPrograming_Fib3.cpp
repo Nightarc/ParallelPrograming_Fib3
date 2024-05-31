@@ -122,7 +122,7 @@ int task4_run(int p, vector<int> arr) {
     return 0;
 }   
 
-chrono::milliseconds task4(int P, int N) {
+void task4(int P, int N) {
     //Filling ertosphenes sieve
     for (size_t i = 0; i < 1000000; i++)
         s[i] = true;
@@ -132,7 +132,7 @@ chrono::milliseconds task4(int P, int N) {
             s[j] = false;
 
     vector<int> arr = createVectorRandom(N, 1e5, 1e6);
-    return RunAndMeasure(to_string(N).c_str(), [P, &arr] {return task4_run(P, arr); }, true);
+    RunAndMeasure(to_string(N).c_str(), [P, &arr] {return task4_run(P, arr); });
     
 
     /*if (DEBUG) {
@@ -322,16 +322,21 @@ int main()
             break;
         case 4:
         {
-            for (size_t i = 0; i < 4; i++)
+            for (size_t i = 0; i < 3; i++)
             {
-                chrono::milliseconds time = (chrono::milliseconds)0;
-                for (size_t i = 0; i < 3; i++)
+                int time = 0;
+                for (size_t j = 0; j < 4; j++)
                 {
-                    auto start = std::chrono::steady_clock::now();
-                    task4(p[i], ns[i]);
-                    auto end = std::chrono::steady_clock::now();
-                    time += chrono::duration<double>(end - start).count();
+                    cout << p[j] << " threads: " << endl;
+                    for (size_t k = 0; k < 3; k++)
+                    {
+                        auto start = std::chrono::steady_clock::now();
+                        task4(p[j], ns[i]);
+                        auto end = std::chrono::steady_clock::now();
+                        time += std::chrono::duration_cast<chrono::milliseconds>(end - start).count();
+                    }
                 }
+                cout << "Average time: " << (double)time / (double)3 << endl;
             }
             break;
         }
