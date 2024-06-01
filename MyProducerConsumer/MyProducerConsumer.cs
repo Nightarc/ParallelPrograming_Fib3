@@ -27,6 +27,7 @@ namespace MyProducerConsumer
             InitializeComponent();
         }
 
+        //Button event handles
         private void button1_Click(object sender, EventArgs e)
         {
             stop = false;
@@ -40,6 +41,26 @@ namespace MyProducerConsumer
             stop = true;
         }
 
+        private void producerButton_Click(object sender, EventArgs e)
+        {
+            Task.Run(() => Producer());
+        }
+
+        private void consumerButton_Click(object sender, EventArgs e)
+        {
+            Task.Run(() => Consumer());
+
+        }
+
+        private void Clear_Click(object sender, EventArgs e)
+        {
+            stop = true;
+            logListBox.Items.Clear();
+            while (buffer.Count > 0) { buffer.Take(); }
+            storageListBox.Items.Clear();
+        }
+
+        //Thread methods
         private void Producer()
         {
             while (!stop)
@@ -54,6 +75,22 @@ namespace MyProducerConsumer
             }
 
         }
+
+        private void Consumer()
+        {
+            while (!stop)
+            {
+                int item = buffer.Take();
+                string logMessage = String.Format($"Consumed: {item}");
+                log(logMessage);
+                updateStorage();
+                updateStatus(logMessage);
+                Thread.Sleep(consumerDelay);
+            }
+        }
+        
+
+        //Thread-safe ui updates
         private void log(string text)
         {
             if (logListBox.InvokeRequired)
@@ -80,36 +117,8 @@ namespace MyProducerConsumer
                 lastLogMessage.Invoke(new Action<string>(updateStatus), text);
             else lastLogMessage.Text = text;
         }
-        private void Consumer()
-        {
-            while (!stop)
-            {
-                int item = buffer.Take();
-                string logMessage = String.Format($"Consumed: {item}");
-                log(logMessage);
-                updateStorage();
-                updateStatus(logMessage);
-                Thread.Sleep(consumerDelay);
-            }
-        }
+        
 
-        private void producerButton_Click(object sender, EventArgs e)
-        {
-            Task.Run(() => Producer());
-        }
-
-        private void consumerButton_Click(object sender, EventArgs e)
-        {
-            Task.Run(() => Consumer());
-
-        }
-
-        private void Clear_Click(object sender, EventArgs e)
-        {
-            stop = true;
-            logListBox.Items.Clear();
-            while(buffer.Count > 0) { buffer.Take(); }
-            storageListBox.Items.Clear();
-        }
+        
     }
 }
