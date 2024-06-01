@@ -68,7 +68,7 @@ namespace BackgroundProcessing
                         {
                             foreach (int num in array) wr.Write(num + " ");
                             wr.WriteLine();
-                            log($"Array was written in result file");
+                            log($"Thread1: Array was written in result file");
                         }
                     }
                     Thread.Sleep(100);
@@ -100,7 +100,7 @@ namespace BackgroundProcessing
                         {
                             int arraySum = array.Sum();
                             wr.WriteLine(arraySum);
-                            log($"Sum was written: {arraySum}");
+                            log($"Thread2: Sum was written: {arraySum}");
                         }
                     }
                     Thread.Sleep(1500);
