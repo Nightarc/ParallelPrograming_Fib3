@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace ProducerConsumer.Properties
+namespace ReadersAndWriters.Properties
 {
 
 
