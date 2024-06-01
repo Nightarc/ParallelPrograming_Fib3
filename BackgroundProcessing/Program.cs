@@ -16,7 +16,7 @@ namespace BackgroundProcessing
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new BackgroundProcessing());
+            Application.Run(new BPForm());
         }
     }
 }

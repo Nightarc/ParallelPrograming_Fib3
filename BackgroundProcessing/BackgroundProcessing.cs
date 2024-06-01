@@ -13,7 +13,7 @@ using System.Windows.Forms;
 
 namespace BackgroundProcessing
 {
-    public partial class BackgroundProcessing : Form
+    public partial class BPForm : Form
     {
         const int limit = 10;
         BlockingCollection<int[]> arrays = new BlockingCollection<int[]>(limit);
@@ -23,7 +23,7 @@ namespace BackgroundProcessing
 
         static readonly object lockObj = new object(); // Объект блокировки для синхронизации доступа к файлу
 
-        public BackgroundProcessing()
+        public BPForm()
         {
             InitializeComponent();
         }
@@ -120,6 +120,11 @@ namespace BackgroundProcessing
             {
                 logListBox.Items.Add(text);
             }
+        }
+
+        private void BackgroundProcessing_Load(object sender, EventArgs e)
+        {
+
         }
     }
 

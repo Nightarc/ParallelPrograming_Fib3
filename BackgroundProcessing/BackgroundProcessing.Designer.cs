@@ -1,6 +1,6 @@
 ﻿namespace BackgroundProcessing
 {
-    partial class BackgroundProcessing
+    partial class BPForm
     {
         /// <summary>
         /// Обязательная переменная конструктора.
@@ -50,15 +50,16 @@
             this.startButton.UseVisualStyleBackColor = true;
             this.startButton.Click += new System.EventHandler(this.startButton_Click);
             // 
-            // BackgroundProcessing
+            // BPForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(465, 415);
             this.Controls.Add(this.startButton);
             this.Controls.Add(this.logListBox);
-            this.Name = "BackgroundProcessing";
-            this.Text = "Form1";
+            this.Name = "BPForm";
+            this.Text = "BackgroundProcessing";
+            this.Load += new System.EventHandler(this.BackgroundProcessing_Load);
             this.ResumeLayout(false);
 
         }
