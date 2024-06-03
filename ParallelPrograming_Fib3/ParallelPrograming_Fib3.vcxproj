@@ -128,14 +128,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ParallelPrograming_Fib3.cpp" />
-    <ClCompile Include="SquareMatrix_OneD.cpp" />
-    <ClCompile Include="SquareMatrix_TwoD.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="asd.h" />
     <ClInclude Include="SquareMatrix_OneD.h" />
     <ClInclude Include="SquareMatrix_TwoD.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
