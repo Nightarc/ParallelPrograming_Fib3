@@ -16,6 +16,48 @@ void printMPSupport() {
 		printf("OpenMP is not supported!\n");
 	#endif
 }
+int gpd(int n) {
+	int gpd = -1;
+	while (n % 2 == 0) {
+		gpd = 2;
+		n /= 2;
+	}
+	for (int i = 3; i <= sqrt(n); i += 2) {
+		while (n % i == 0) {
+			gpd = i;
+			n = n / i;
+		}
+	}
+	if (n > 2) gpd = n;
+	return gpd;
+}
+using Matrix = vector<vector<int>>;
+
+// Функция для инициализации матрицы размером N x N
+void initializeMatrix(Matrix& matrix, int N) {
+	random_device rd;
+	mt19937 gen(rd());
+	uniform_int_distribution<> dis(1, 10);
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < N; ++j) {
+			matrix[i][j] = dis(gen);
+		}
+	}
+}
+
+// Функция умножения матриц
+void multiplyMatrices(const Matrix& A, const Matrix& B, Matrix& C, int N, int numThreads) {
+	omp_set_num_threads(numThreads);
+#pragma omp parallel for collapse(2)
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < N; ++j) {
+			C[i][j] = 0;
+			for (int k = 0; k < N; ++k) {
+				C[i][j] += A[i][k] * B[k][j];
+			}
+		}
+	}
+}
 
 int main() 
 {
@@ -52,19 +94,20 @@ int main()
 			// Создаем два потока
 #pragma omp parallel num_threads(2)
 			{
+
 				// Получаем номер текущего потока
 				int tid = omp_get_thread_num();
 
 				// Первый поток выводит числа от 1 до N
 				if (tid == 0) {
 					for (int i = 1; i <= N; ++i) {
-						std::cout << "Thread 1: " << i << std::endl;
+						cout << "Thread 1: " << i << endl;
 					}
 				}
 				// Второй поток выводит слово "HELLO" N раз
 				else if (tid == 1) {
 					for (int i = 0; i < N; ++i) {
-						std::cout << "Thread 2: HELLO" << std::endl;
+						cout << "Thread 2: HELLO" << endl;
 					}
 				}
 			}
@@ -82,7 +125,7 @@ int main()
 			vector<int> C(N);
 
 			auto start_time = chrono::high_resolution_clock::now();
-			//Распараллеливаем итерации цикла между потоками, но как именно - решение за компилятором
+			//Распараллеливаем итерации цикла между потоками, размер уменьшается с каждым распределенеием
 #pragma omp parallel for schedule(guided)
 			for (int i = 0; i < N; ++i) 
 				C[i] = A[i] * B[i];
@@ -121,8 +164,10 @@ int main()
 
 			//Операция редукции
 #pragma omp parallel for reduction(max: max_val_reduction)
-			for (int i = 0; i < N; ++i) 
+			for (int i = 0; i < N; ++i) {
 				max_val_reduction = max(max_val_reduction, vec[i]);
+
+			}
 
 
 			//Операция с критической секцией
@@ -152,11 +197,11 @@ int main()
 		case 5:
 		{
 			int N, sum = 0;
-			std::cout << "Введите число N: ";
-			std::cin >> N;
+			cout << "Enter N: ";
+			cin >> N;
 
-			int M = 2; // Количество потоков для суммирования
-			int K = 1; // Количество потоков для вычисления длины вектора
+			int M = 4; // Количество потоков для суммирования
+			int K = 3; // Количество потоков для вычисления длины вектора
 
 			omp_set_nested(1); // Включение вложенного параллелизма
 
@@ -167,9 +212,10 @@ int main()
 					// Вычисление суммы от 1 до N
 #pragma omp parallel for num_threads(M) reduction(+:sum)
 					for (int i = 1; i <= N; ++i) {
+						if (i == 1) cout << "Threads: " << omp_get_num_threads() << " ";
 						sum += i;
 					}
-					std::cout << "Сумма от 1 до " << N << ": " << sum << std::endl;
+					cout << "Sum from 1 to " << N << ": " << sum << endl;
 				}
 
 #pragma omp section
@@ -177,9 +223,9 @@ int main()
 					// Вычисление длины N-мерного вектора (будет выведено k раз так как создается K потоков)
 #pragma omp parallel for num_threads(K)
 					for (int i = 0; i < K; ++i) {
-						double length = std::sqrt(N);
+						double length = sqrt(N);
 #pragma omp critical
-						std::cout << "Length of " << N << "-vector: " << length << std::endl;
+						cout << "Length of " << N << "-vector: " << length << endl;
 					}
 				}
 			}
@@ -203,23 +249,26 @@ int main()
 			for (int N : sizes) {
 				vector<int> vec(N);
 
-				cout << "Тестирование для N = " << N << endl;
+				cout << "N = " << N << endl;
 
 				for (int T : threads) {
 					totalTime = 0;
-
 					for (int run = 0; run < runs; ++run) {
+						auto genStart = chrono::high_resolution_clock::now();
 						// Генерация чисел для каждого запуска, чтобы избежать эффекта кэширования
 						for (int& val : vec) 
 							val = dis(gen);
+						auto genEnd = chrono::high_resolution_clock::now();
+						chrono::duration<double, milli> gen_time = genEnd - genStart;
 
-						omp_set_num_threads(T);
+
 						auto start_time = chrono::high_resolution_clock::now();
-
-#pragma omp parallel for schedule(dynamic)
-						for (int i = 0; i < N; ++i) {
-							vec[i] = maxPrimeDivisor(vec[i]);
+#pragma omp parallel for num_threads(T) schedule(dynamic)
+						for (int i = 0; i < N; ++i)
+						{
+							vec[i] = gpd(vec[i]);
 						}
+						
 
 						auto end_time = chrono::high_resolution_clock::now();
 						chrono::duration<double, milli> elapsed_time = end_time - start_time;
@@ -227,28 +276,118 @@ int main()
 					}
 
 					double averageTime = totalTime / runs;
-					cout << "Среднее время выполнения на " << T << " потоках: " << averageTime << " секунд" << endl;
+					cout << "Average time with " << T << " threads: " << averageTime << " s" << endl;
 					times.push_back(averageTime);
 				}
 
 				// Расчет и вывод ускорения
-				cout << "Ускорение:" << endl;
+				cout << "Acceleration:" << endl;
 				for (int i = 1; i < times.size(); i++)
-				{
 					cout << i * 2 << " " << times[0] / times[i] << endl;
-				}
+
 				times.clear();
 			}
 			break;
 		}
 		case 7:
 		{
+			vector<int> sizes = { 500, 1000, 2000 }; // Размеры матриц
+			vector<int> threads = { 1, 2, 4, 8 }; // Количество потоков
+			vector<double> times;
 
+			for (int N : sizes) {
+				Matrix A(N, vector<int>(N));
+				Matrix B(N, vector<int>(N));
+				Matrix C(N, vector<int>(N));
+
+				initializeMatrix(A, N);
+				initializeMatrix(B, N);
+
+				cout << "N = " << N << endl;
+				for (int T : threads) {
+					double totalTime = 0;
+					const int runs = 3;
+					for (int run = 0; run < runs; ++run) {
+						auto start_time = chrono::high_resolution_clock::now();
+
+						multiplyMatrices(A, B, C, N, T);
+
+						auto end_time = chrono::high_resolution_clock::now();
+						chrono::duration<double> elapsed_time = end_time - start_time;
+						totalTime += elapsed_time.count();
+					}
+					double averageTime = totalTime / runs;
+					cout << "Average time with " << T << " threads: " << averageTime << " s" << endl;
+					times.push_back(averageTime);
+				}
+
+				// Расчет и вывод ускорения
+				cout << "Acceleration:" << endl;
+				for (int i = 1; i < times.size(); i++)
+					cout << i * 2 << " " << times[0] / times[i] << endl;
+
+				times.clear();
+			}
 			break;
 		}
 		case 8:
 		{
+			std::vector<int> sizes = { 5000, 10000, 20000 };
+			vector<int> threads = { 1, 2, 4, 8 };
+			const int runs = 3; // Количество запусков для каждого теста
 
+			random_device rd;
+			mt19937 gen(rd());
+			uniform_int_distribution<> dis(1, 1000);
+			vector<double> times;
+
+			for (int N : sizes) {
+				vector<vector<int>> matrix(N, vector<int>(N));
+
+				cout << "N = " << N << endl;
+
+				for (int T : threads) {
+					double totalTime = 0;
+					double timeForOneThread = 0;
+
+					for (int run = 0; run < runs; ++run) {
+						// Заполнение матрицы случайными значениями
+						for (auto& row : matrix) {
+							for (int& cell : row) {
+								cell = dis(gen);
+							}
+						}
+
+						omp_set_num_threads(T);
+						auto start_time = chrono::high_resolution_clock::now();
+						int maxMin = numeric_limits<int>::min();
+
+#pragma omp parallel for reduction(max : maxMin)
+						for (int i = 0; i < N; ++i) 
+							maxMin = *max_element(matrix[i].begin(), matrix[i].end());
+						
+						auto end_time = chrono::high_resolution_clock::now();
+						chrono::duration<double, milli> elapsed_time = end_time - start_time;
+						totalTime += elapsed_time.count();
+					}
+					double averageTime = totalTime / runs / 1000.0; // Преобразование в секунды
+					cout << "Average time " << T << " threads: " << averageTime << " s" << endl;
+					times.push_back(averageTime);
+				}
+
+				// Расчет и вывод ускорения
+				cout << "Acceleration:" << endl;
+				for (int i = 1; i < times.size(); i++)
+					cout << threads[i] << " threads: " << times[0] / times[i] << "x" << endl;
+
+				times.clear();
+
+			}
+			break;
+		}
+		default:
+		{
+			cout << "No task has been chosen." << endl;
 			break;
 		}
 	}
