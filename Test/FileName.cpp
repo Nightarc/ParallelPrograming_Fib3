@@ -195,9 +195,8 @@ void master_nonblock(int num_arrays, int array_size, int num_procs) {
 
 	// Инициализация массивов случайными числами
 	srand(time(0));
-	for (auto& arr : arrays) {
+	for (auto& arr : arrays)
 		generate(arr.begin(), arr.end(), []() { return rand() % 100; });
-	}
 
 	vector<MPI_Request> requests(num_procs);
 	vector<int> done_flags(num_procs, 0);
@@ -206,44 +205,44 @@ void master_nonblock(int num_arrays, int array_size, int num_procs) {
 
 	// Распределение первых массивов
 	for (int i = 1; i < num_procs && array_index < num_arrays; ++i, ++array_index) {
-		MPI_Isend(arrays[array_index].data(), array_size, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i]);
+		MPI_Isend(arrays[array_index].data(), array_size, MPI_INT, i, 0,
+			MPI_COMM_WORLD, &requests[i]);
 		++active_slaves;
 	}
 
-	// Получение результатов и отправка новых задач
+	// Основной рабочий цикл, получающий результаты и выдающий новые задачи процессам
 	while (array_index < num_arrays || active_slaves > 0) {
-		for (int i = 1; i < num_procs; ++i) {
-			if (done_flags[i] == 0) {
-				int flag;
-				MPI_Test(&requests[i], &flag, MPI_STATUS_IGNORE);
-				if (flag) {
-					int local_sum;
-					MPI_Status status;
-					MPI_Recv(&local_sum, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-					global_sum += local_sum;
-					--active_slaves;
-
-					if (array_index < num_arrays) {
-						MPI_Isend(arrays[array_index].data(), array_size, MPI_INT, status.MPI_SOURCE, 0, MPI_COMM_WORLD, &requests[i]);
-						++array_index;
-						++active_slaves;
-					}
-					else {
-						int done = 1;
-						MPI_Isend(&done, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD, &requests[i]); // Сообщение об окончании
-						done_flags[i] = 1;
-					}
+		for (size_t i = 0; i < num_procs; i++) //Итерация по списку процессов в поиске свободного
+		{
+			int flag;
+			MPI_Test(&requests[i], &flag, MPI_STATUS_IGNORE);
+			if (flag) {
+				int local_sum;
+				MPI_Status status;
+				MPI_Recv(&local_sum, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG,
+					MPI_COMM_WORLD, &status);
+				global_sum += local_sum;
+				--active_slaves;
+				if (array_index < num_arrays) {
+					MPI_Isend(arrays[array_index].data(), array_size, MPI_INT,
+						status.MPI_SOURCE, 0, MPI_COMM_WORLD, &requests[i]);
+					++array_index;
+					++active_slaves;
+				}
+				else {
+					int done = 1;
+					MPI_Isend(&done, 1, MPI_INT, status.MPI_SOURCE, 1,
+						MPI_COMM_WORLD, &requests[i]); // Сообщение об окончании
+					done_flags[i] = 1;
 				}
 			}
 		}
-	}
 
+	}
 	double end_time = MPI_Wtime();
 	double elapsed_time = end_time - start_time;
-
 	cout << "Sum: " << global_sum << endl;
 	cout << "Time: " << elapsed_time << " seconds" << endl;
-
 }
 
 void slave_nonblock(int array_size) {
@@ -282,57 +281,8 @@ int task5_nonblock(int argc, char* argv[]) {
 	return 0;
 }
 
-void print_matrix(vector<int>& matrix, int size) {
-	for (int i = 0; i < size; ++i) {
-		cout << matrix[i] << " ";
-	}
-	cout << endl;
-}
-
-int task6(int argc, char* argv[]) {
-	MPI_Init(&argc, &argv);
-
-	int rank, size;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-	if (size * size != size * size) {
-		if (rank == 0) {
-			cout << "Number of processes must be equal to the number of rows and columns in the matrix." << endl;
-		}
-		MPI_Finalize();
-		return 1;
-	}
-
-	vector<int> row(size);
-	for (int i = 0; i < size; ++i) 
-		row[i] = rank;
-	
-
-	cout << "Process " << rank << " initial row: ";
-	print_matrix(row, size);
-
-	vector<int> col(size);
-	MPI_Request request;
-
-	for (int i = 0; i < size; ++i) 
-		MPI_Isend(&row[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-	
-	for (int i = 0; i < size; ++i) 
-		MPI_Recv(&col[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	
-
-	MPI_Wait(&request, MPI_STATUS_IGNORE);
-
-	cout << "Process " << rank << " final column: ";
-	print_matrix(col, size);
-
-	MPI_Finalize();
-	return 0;
-}
-
 
 int main(int argc, char* argv[])
 {
-	task6(argc, argv);
+	task5_nonblock(argc, argv);
 }
