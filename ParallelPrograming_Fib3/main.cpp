@@ -98,9 +98,6 @@ int task1(int argc, char* argv[])
 	MPI_Finalize();
 	return 0;
 }
-//
-// 
-// 
 
 //
 //TASK 2
@@ -171,9 +168,132 @@ int task2(int argc, char* argv[]) {
 }
 
 //
+// TASK 3
 //
-//
+// Функция для умножения матрицы на вектор
+void matrix_vector_multiply(const vector<vector<int>>& matrix, const
+	vector<int>& vec, vector<int>& result, int start_row, int end_row) {
+	for (int i = start_row; i < end_row; ++i) {
+		result[i - start_row] = 0;
+		for (int j = 0; j < vec.size(); ++j) 
+			result[i - start_row] += matrix[i][j] * vec[j];
+	}
+}
+
+int task3(int argc, char* argv[]) {
+	MPI_Init(&argc, &argv);
+	srand(time(0));
+
+	int rank, size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+	int sizes[] = { 3000, 5000, 10000 };
+	vector<double> times;
+	const int runs = 3;
+	for (int n : sizes)
+	{	
+		vector<vector<int>> M(n);
+		vector<int> vec(n);
+		vector<int> result(n);
+		if (rank == 0) {
+			//Генерация случайных матрицы и вектора
+			M.resize(n, vector<int>(n));
+			for (size_t i = 0; i < n; i++)
+			{
+				for (size_t j = 0; j < n; j++)
+					M[i][j] = rand() % 10;
+				vec[i] = rand() % 10;
+			}
+				
+			g//Отправка вектора и матрицы всем процессам
+			MPI_Bcast(vec.data(), vec.size(), MPI_INT, 0, MPI_COMM_WORLD);
+
+			// Распределение матрицы по процессам - каждый процесс вычисляет сколько он должен получить/отправить
+			int rows_per_proc = n / size;
+			int remainder = n % size;
+			int start_row = rank * rows_per_proc + min(rank, remainder); //Последний процесс добирает оставшиеся массивы
+			int end_row = start_row + rows_per_proc + (rank < remainder ? 1 : 0);
+
+			//Кусочек матрицы каждого процесса
+			vector<vector<int>> local_matrix(end_row - start_row, vector<int>(n));
+
+			//Базовый процесс
+			if (rank == 0) {
+				//Распределение и отправка матрицы рабочим процессам
+				for (int i = 0; i < size; i++)
+				{
+					//Вычисление количества рядов, которых необходимо отправить
+					int start = i * rows_per_proc + min(i, remainder);
+					int end = start + rows_per_proc + (i < remainder ? 1 : 0);
+
+					if (i != 0) {
+						//Отправка вычисленного количество рядов процессу
+						for (int j = 0; j < end; j++)
+							MPI_Send(M[j].data(), n, MPI_INT, i, 0, MPI_COMM_WORLD);
+					}
+					else {
+						local_matrix = vector<vector<int>>(M.begin() + start, M.begin() + end);
+					}
+				}
+			}
+			//Рабочие процессы
+			else {
+				//Приём куска матрицы
+				for (int i = 0; i < end_row - start_row; ++i)
+					MPI_Recv(local_matrix[i].data(), n, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			}
+			//Вычисление произведения
+			double total_time = 0.0;
+			for (int i = 0; i < runs; ++i) {
+				double start_time = MPI_Wtime();
+				vector<int> local_result(end_row - start_row);
+				matrix_vector_multiply(local_matrix, vec, local_result, 0,
+					end_row - start_row);
+
+				// Сбор результатов
+				vector<int> recvcounts(size);
+				vector<int> displs(size);
+				for (int i = 0; i < size; ++i) {
+					recvcounts[i] = rows_per_proc + (i < remainder ? 1 : 0);
+					displs[i] = (i == 0) ? 0 : displs[i - 1] + recvcounts[i];
+				}
+				MPI_Gatherv(local_result.data(), local_result.size(),
+					MPI_INT, result.data(), recvcounts.data(), displs.data(), MPI_INT, 0,
+					MPI_COMM_WORLD);
+				double end_time = MPI_Wtime();
+				total_time += (end_time - start_time);
+			}
+
+			//Подсчет времени
+			if (rank == 0) {
+				double average_time = total_time / runs;
+				times.push_back(average_time);
+				cout << "N = " << n << ", Processes = " << size << ", Average Time : " << average_time << " seconds" << endl;
+			}
+		}
+	}
+	//Подсчет ускорения
+	if (rank == 0) {
+		const int baseline_processes = 1;
+		vector<double> speedup, efficiency;
+		for (int i = 1; i < times.size(); ++i) {
+			speedup.push_back(times[0] / times[i]);
+			efficiency.push_back(speedup.back() / (i + 1));
+		}
+	}
+	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Finalize();
+	return 0;
+}
+
+	
+
+	
+
+
+
 
 int main(int argc, char* argv[]) {
-
+	task3(argc, argv);
 }
