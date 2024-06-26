@@ -6,333 +6,174 @@
 
 using namespace std;
 
-int task1(int argc, char* argv[]) {
-	int proc_rank, proc_num;
-	MPI_Status st;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &proc_num);
-	cout << "I am " << proc_rank + 1 << " process from " << proc_num << " processes!" << endl;
-	MPI_Finalize();
-	return 0;
+//Task1
+double calculate_ln2(int n, int rank, int size) {
+	double local_sum = 0.0;
+	for (int k = rank + 1; k <= n; k += size) {
+		local_sum += pow(-1, k - 1) / k;
+	}
+	return local_sum;
 }
 
-int task2(int argc, char* argv[]) {
-	int proc_rank, proc_num;
-	MPI_Status st;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &proc_num);
-	if (proc_rank == 0) {
-		cout << "Number of processes: " << proc_num << endl;
-	}
-	if (proc_rank % 2 == 0) {
-		cout << proc_rank << ": FIRST!" << endl;
-	}
-	else {
-		cout << proc_rank << ": SECOND!" << endl;
-	}
-	MPI_Finalize();
-	return 0;
-}
-
-constexpr auto MSGLEN = 32768; //размер сообщения
-constexpr auto TAG_A = 100; constexpr auto TAG_B = 200;
-
-int task3(int argc, char* argv[]) {
-	vector<float> message1(MSGLEN), message2(MSGLEN); //пересылаемые сообщения
-	int rank, dest, source, send_tag, recv_tag; MPI_Status status;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Request send_request, recv_request;
-	for (int i = 0; i < MSGLEN; i++) {
-		message1[i] = 1 - 2 * rank;
-	}
-
+void calc_pair_operations(int n, int rank, int size, double& global_sum)
+{
+	double local_sum = calculate_ln2(n, rank, size);
 	if (rank == 0) {
-		dest = 1;
-		source = 1; send_tag = TAG_A; recv_tag = TAG_B;
-	}
-	else if (rank == 1) {
-		dest = 0;
-		source = 0; send_tag = TAG_B; recv_tag = TAG_A;
+		global_sum = local_sum;
+		for (int i = 1; i < size; ++i) {
+			double recv_sum;
+			MPI_Recv(&recv_sum, 1, MPI_DOUBLE, i, 0, MPI_COMM_WORLD,
+				MPI_STATUS_IGNORE);
+			global_sum += recv_sum;
+		}
 	}
 	else {
-		MPI_Finalize();
-		return 0;
+		MPI_Send(&local_sum, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 	}
-	cout << "Task " << rank << " has sent the message" << endl;
-	MPI_Isend(message1.data(), MSGLEN, MPI_FLOAT, dest, send_tag,
-		MPI_COMM_WORLD, &send_request);
-	MPI_Irecv(message2.data(), MSGLEN, MPI_FLOAT, source, recv_tag, MPI_COMM_WORLD, &recv_request);
-
-	MPI_Wait(&send_request, &status);
-	MPI_Wait(&recv_request, &status);
-
-	cout << " Task " << rank << " has received the message" << endl;
-
-
-	MPI_Finalize();
-	return 0;
 }
 
-int task4(int argc, char* argv[]) {
-	int proc_rank, proc_num, randNumber, number;
-	MPI_Status st;
+void calc_coll_operations(int n, int rank, int size, double&
+	global_sum) {
+	double local_sum = calculate_ln2(n, rank, size);
+	MPI_Reduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0,
+		MPI_COMM_WORLD);
+}
+
+int task1(int argc, char* argv[])
+{
 	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &proc_num);
-
-	if (proc_rank == 0) {
-		srand(time(0));
-		randNumber = rand() % 100;
-		MPI_Send(&randNumber, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-		MPI_Recv(&number, 1, MPI_INT, proc_num - 1, 0, MPI_COMM_WORLD, &st);
-		if (number - randNumber == proc_num - 1) cout << "0: CORRECT!" << endl;
-		else cout << "0: ERROR!" << endl;
-	}
-	else {
-		MPI_Recv(&number, 1, MPI_INT, proc_rank - 1, 0, MPI_COMM_WORLD, &st);
-		cout << proc_rank << ": Received a " << number << " from " << proc_rank - 1 << endl;
-		number++;
-		MPI_Send(&number, 1, MPI_INT, (proc_rank + 1) % proc_num, 0, MPI_COMM_WORLD);
-		cout << proc_rank << ": Sent an " << number << " to " << (proc_rank + 1) % proc_num << endl;
-	}
-
-	MPI_Finalize();
-	return 0;
-}
-
-//TASK 5: blocking
-void master(int num_arrays, int array_size, int num_procs) {
-	vector<vector<int>> arrays(num_arrays, vector<int>(array_size));
-	int array_index = 0, active_slaves = 0;
-	int global_sum = 0;
-
-
-
-	// Инициализация массивов случайными числами
-	srand(time(0));
-	for (auto& arr : arrays)
-		generate(arr.begin(), arr.end(), []() { return rand() % 100; });
-
-	double start_time = MPI_Wtime();
-
-	// Распределение первых массивов
-	for (int i = 1; i < num_procs && array_index < num_arrays; ++i, ++array_index) {
-		MPI_Send(arrays[array_index].data(), array_size, MPI_INT, i, 0,
-			MPI_COMM_WORLD);
-		++active_slaves;
-	}
-
-	// Основной рабочий цикл, получающий результаты и выдающий новые задачи процессам
-	while (array_index < num_arrays || active_slaves > 0) {
-		int local_sum;
-		MPI_Status status;
-		MPI_Recv(&local_sum, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG,
-			MPI_COMM_WORLD, &status);
-		global_sum += local_sum;
-		--active_slaves;
-		if (array_index < num_arrays) {
-			MPI_Send(arrays[array_index].data(), array_size, MPI_INT,
-				status.MPI_SOURCE, 0, MPI_COMM_WORLD);
-			++array_index;
-			++active_slaves;
-		}
-		else {
-			int done = 1;
-			MPI_Send(&done, 1, MPI_INT, status.MPI_SOURCE, 1,
-				MPI_COMM_WORLD); // Сообщение об окончании
-		}
-	}
-	double end_time = MPI_Wtime();
-	double elapsed_time = end_time - start_time;
-	cout << "Sum: " << global_sum << endl;
-	cout << "Time: " << elapsed_time << " seconds" << endl;
-}
-
-void slave(int array_size) {
-	vector<int> array(array_size);
-	while (true) {
-		MPI_Status status;
-		MPI_Recv(array.data(), array_size, MPI_INT, 0, MPI_ANY_TAG,
-			MPI_COMM_WORLD, &status);
-		if (status.MPI_TAG == 1) {
-			break; // Окончание работы
-		}
-		int local_sum = accumulate(array.begin(), array.end(), 0);
-		MPI_Send(&local_sum, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-	}
-}
-
-int task5_block(int argc, char* argv[]) {
-	MPI_Init(&argc, &argv);
-	int rank, num_procs;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-	const int num_arrays[] = { 100, 10000, 1000000 };
-	const int array_sizes[] = { 1000000, 10000, 100 };
-	for (int i = 0; i < 3; ++i) {
-		if (rank == 0) {
-			cout << "Testing for N = " << num_arrays[i] << " and M = "
-				<< array_sizes[i] << endl;
-			master(num_arrays[i], array_sizes[i], num_procs);
-		}
-		else {
-			slave(array_sizes[i]);
-		}
-		MPI_Barrier(MPI_COMM_WORLD); // Синхронизация перед началом следующего теста
-	}
-	MPI_Finalize();
-	return 0;
-}
-
-//TASK 5: non-blocking
-void master_nonblock(int num_arrays, int array_size, int num_procs) {
-	vector<vector<int>> arrays(num_arrays, vector<int>(array_size));
-	int array_index = 0, active_slaves = 0;
-	int global_sum = 0;
-
-	// Инициализация массивов случайными числами
-	srand(time(0));
-	for (auto& arr : arrays) {
-		generate(arr.begin(), arr.end(), []() { return rand() % 100; });
-	}
-
-	vector<MPI_Request> requests(num_procs);
-	vector<int> done_flags(num_procs, 0);
-
-	double start_time = MPI_Wtime();
-
-	// Распределение первых массивов
-	for (int i = 1; i < num_procs && array_index < num_arrays; ++i, ++array_index) {
-		MPI_Isend(arrays[array_index].data(), array_size, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i]);
-		++active_slaves;
-	}
-
-	// Получение результатов и отправка новых задач
-	while (array_index < num_arrays || active_slaves > 0) {
-		for (int i = 1; i < num_procs; ++i) {
-			if (done_flags[i] == 0) {
-				int flag;
-				MPI_Test(&requests[i], &flag, MPI_STATUS_IGNORE);
-				if (flag) {
-					int local_sum;
-					MPI_Status status;
-					MPI_Recv(&local_sum, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-					global_sum += local_sum;
-					--active_slaves;
-
-					if (array_index < num_arrays) {
-						MPI_Isend(arrays[array_index].data(), array_size, MPI_INT, status.MPI_SOURCE, 0, MPI_COMM_WORLD, &requests[i]);
-						++array_index;
-						++active_slaves;
-					}
-					else {
-						int done = 1;
-						MPI_Isend(&done, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD, &requests[i]); // Сообщение об окончании
-						done_flags[i] = 1;
-					}
-				}
-			}
-		}
-	}
-
-	double end_time = MPI_Wtime();
-	double elapsed_time = end_time - start_time;
-
-	cout << "Sum: " << global_sum << endl;
-	cout << "Time: " << elapsed_time << " seconds" << endl;
-
-}
-
-void slave_nonblock(int array_size) {
-	vector<int> array(array_size);
-	while (true) {
-		MPI_Status status;
-		MPI_Recv(array.data(), array_size, MPI_INT, 0, MPI_ANY_TAG,
-			MPI_COMM_WORLD, &status);
-		if (status.MPI_TAG == 1) {
-			break; // Окончание работы
-		}
-		int local_sum = accumulate(array.begin(), array.end(), 0);
-		MPI_Send(&local_sum, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-	}
-}
-
-int task5_nonblock(int argc, char* argv[]) {
-	MPI_Init(&argc, &argv);
-	int rank, num_procs;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-	const int num_arrays[] = { 100, 10000, 1000000 };
-	const int array_sizes[] = { 1000000, 10000, 100 };
-	for (int i = 0; i < 3; ++i) {
-		if (rank == 0) {
-			cout << "Testing for N = " << num_arrays[i] << " and M = "
-				<< array_sizes[i] << endl;
-			master_nonblock(num_arrays[i], array_sizes[i], num_procs);
-		}
-		else {
-			slave_nonblock(array_sizes[i]);
-		}
-		MPI_Barrier(MPI_COMM_WORLD); // Синхронизация перед началом следующего теста
-	}
-	MPI_Finalize();
-	return 0;
-}
-
-void print_matrix(vector<int>& matrix, int size) {
-	for (int i = 0; i < size; ++i) {
-		cout << matrix[i] << " ";
-	}
-	cout << endl;
-}
-
-int task6(int argc, char* argv[]) {
-	MPI_Init(&argc, &argv);
-
 	int rank, size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	const int ns[] = { 1e8, 5*1e8, 1e9 };
+	const int runs = 3;
+	vector<double> times_pairwise, times_collective;
+	for (int n : ns) {
+		double total_time_pairwise = 0.0;
+		double total_time_collective = 0.0;
 
-	if (size * size != size * size) {
-		if (rank == 0) {
-			cout << "Number of processes must be equal to the number of rows and columns in the matrix." << endl;
+		//Парные обмены
+		for (int i = 0; i < runs; ++i) {
+			double start_time = MPI_Wtime();
+			double global_sum = 0.0;
+			calc_pair_operations(n, rank, size, global_sum);
+			double end_time = MPI_Wtime();
+			total_time_pairwise += (end_time - start_time);
 		}
-		MPI_Finalize();
-		return 1;
+
+		//Коллективные обмены
+		for (int i = 0; i < runs; ++i) {
+			double start_time = MPI_Wtime();
+			double global_sum = 0.0;
+			calc_coll_operations(n, rank, size, global_sum);
+			double end_time = MPI_Wtime();
+			total_time_collective += (end_time - start_time);
+		}
+
+		if (rank == 0) {
+			double average_time_pairs = total_time_pairwise / runs;
+			double average_time_coll = total_time_collective /
+				runs;
+			times_pairwise.push_back(average_time_pairs);
+			times_collective.push_back(average_time_coll);
+			cout << "N = " << n << ", Processes = " << size << ", Average Time(Pairwise) : " << average_time_pairs << " seconds" << endl;
+			cout << "N = " << n << ", Processes = " << size << ", Average Time(Collective) : " << average_time_coll << " seconds" << endl;
+		}
 	}
+	if (rank == 0) {
+		const int baseline_processes = 1;
+		vector<double> speedup_pairwise, speedup_collective;
+		vector<double> efficiency_pairwise, efficiency_collective;
+		for (int i = 1; i < times_pairwise.size(); ++i) {
+			speedup_pairwise.push_back(times_pairwise[0] /
+				times_pairwise[i]);
+			speedup_collective.push_back(times_collective[0] /
+				times_collective[i]);
+			efficiency_pairwise.push_back(speedup_pairwise.back() / (i +
+				1));
+			efficiency_collective.push_back(speedup_collective.back() /
+				(i + 1));
+		}
+	}
+	MPI_Finalize();
+	return 0;
+}
+//
+// 
+// 
 
-	vector<int> row(size);
-	for (int i = 0; i < size; ++i) 
-		row[i] = rank;
+//
+//TASK 2
+//
+bool is_sorted_chunk(const vector<int>& chunk) {
+	return adjacent_find(chunk.begin(), chunk.end(), greater<int>()) ==
+		chunk.end();
+}
+bool check_sorted(const vector<int>& array, int rank, int size, int n) {
+	int chunk_size = n / size;
+	int remainder = n % size;
+	int start = rank * chunk_size + min(rank, remainder);
+	int end = start + chunk_size + (rank < remainder ? 1 : 0);
+	vector<int> chunk(array.begin() + start, array.begin() + end);
+	bool local_sorted = is_sorted_chunk(chunk);
+	bool global_sorted = false;
+	MPI_Allreduce(&local_sorted, &global_sorted, 1, MPI_C_BOOL,
+		MPI_LAND, MPI_COMM_WORLD);
+	return global_sorted;
+}
 	
 
-	cout << "Process " << rank << " initial row: ";
-	print_matrix(row, size);
-
-	vector<int> col(size);
-	MPI_Request request;
-
-	for (int i = 0; i < size; ++i) 
-		MPI_Isend(&row[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-	
-	for (int i = 0; i < size; ++i) 
-		MPI_Recv(&col[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	
-
-	MPI_Wait(&request, MPI_STATUS_IGNORE);
-
-	cout << "Process " << rank << " final column: ";
-	print_matrix(col, size);
-
+int task2(int argc, char* argv[]) {
+	MPI_Init(&argc, &argv);
+	int rank, size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	const int ns[] = { 1e8, 5*1e8 };
+	const int runs = 3;
+	vector<double> times;
+	for (int n : ns) {
+		vector<int> array;
+		if (rank == 0) {
+			array.resize(n);
+			iota(array.begin(), array.end(), 1);
+		}
+		MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+		if (rank != 0) {
+			array.resize(n);
+		}
+		MPI_Bcast(array.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
+		double total_time = 0.0;
+		for (int i = 0; i < runs; ++i) {
+			double start = MPI_Wtime(); 
+			bool sorted = check_sorted(array, rank, size, n);
+			double end = MPI_Wtime();
+			total_time += (end - start);
+			if (rank == 0 && i == runs - 1) {
+				cout << "N = " << n << ", Processes = " << size << endl;
+			}
+		}
+		if (rank == 0) {
+			double average_time = total_time / runs;
+			times.push_back(average_time);
+			cout << "N = " << n << ", Processes = " << size << ", Average Time : " << average_time << " seconds" << endl;
+		}
+	}
+	if (rank == 0) {
+		const int baseline_processes = 1;
+		vector<double> speedup, efficiency;
+		for (int i = 1; i < times.size(); ++i) {
+			speedup.push_back(times[0] / times[i]);
+			efficiency.push_back(speedup.back() / (i + 1));
+		}
+	}
 	MPI_Finalize();
 	return 0;
 }
 
+//
+//
+//
 
-int main(int argc, char* argv[])
-{
-	task6(argc, argv);
+int main(int argc, char* argv[]) {
+
 }
